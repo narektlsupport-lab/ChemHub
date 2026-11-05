@@ -39,7 +39,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px 60px}.hero{display:flex;al
 <aside><section class="panel sidecard"><h3 id="quickTitle">Quick tools</h3><div class="statrow"><div class="stat"><strong>118</strong><small id="statElements">elements</small></div><div class="stat"><strong id="molCount">12+</strong><small id="statMolecules">molecules</small></div><div class="stat"><strong>5</strong><small id="statLanguages">languages</small></div></div><p class="muted" id="quickDesc">Search by name, symbol, atomic number or formula.</p><button class="primary" style="width:100%" data-goto="calculator" id="quickCalc">Calculate molar mass →</button></section>
 <section class="panel sidecard"><h3 id="recentTitle">Recent searches</h3><div id="recentList" class="molecule-list"><div class="emptymsg">No recent searches yet.</div></div><button class="secondary" id="clearRecent" style="margin-top:10px;width:100%">Clear history</button></section>
 <section class="panel"><h3 id="savedTitle">Saved locally</h3><p class="muted" id="savedDesc">Favorites and language preference stay in this browser. No account needed.</p></section></aside></div></div>
-<div id="view-molecules" class="view hidden"><section class="panel"><div class="sectionhead"><div><h2 id="moleculeTitle">Molecules & compounds</h2><div class="muted" id="moleculeHint">A starter set of common school chemistry substances.</div></div><input id="moleculeFilter" class="field" style="width:min(100%,320px);margin:0" placeholder="Filter molecules…"></div><div id="moleculeList" class="molecule-list"></div></section></div>
+<div id="view-molecules" class="view hidden"><section class="panel"><div class="sectionhead"><div><h2 id="moleculeTitle">Molecules & compounds</h2><div class="muted" id="moleculeHint">A starter set of common school chemistry substances.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="moleculeCat" class="field" style="width:200px;margin:0"></select><input id="moleculeFilter" class="field" style="width:min(100%,320px);margin:0" placeholder="Filter molecules…"></div></div><div id="moleculeList" class="molecule-list"></div></section></div>
 <div id="view-calculator" class="view hidden"><div class="layout"><section class="panel"><h2 id="calcTitle">Molar mass calculator</h2><p class="muted" id="calcDesc">Enter a chemical formula. Parentheses and subscripts are supported, e.g. Ca(OH)2, Al2(SO4)3, C6H12O6.</p><label for="formulaInput" id="formulaLabel">Chemical formula</label><input id="formulaInput" class="field" placeholder="e.g. Ca(OH)2"><div class="toolbar"><button class="primary" id="calculateBtn">Calculate</button><button class="secondary" id="exampleBtn">Try example</button><button class="secondary" id="clearCalc">Clear</button></div><div id="calcResult"></div></section><aside class="panel"><h3 id="formulaHelpTitle">How to enter formulas</h3><ul id="formulaHelp" class="muted"><li>Use element symbols with correct capitalization: Na, Cl, Fe.</li><li>Use numbers for subscripts: H2O, CO2.</li><li>Use parentheses for groups: Ca(OH)2.</li><li>Use square brackets only for grouping if supported by the formula parser.</li></ul><p class="status" id="calcStatus"></p></aside></div></div>
 <div id="view-tools" class="view hidden"><div class="layout"><section class="panel"><h2 id="toolsTitle">Chemistry tools</h2><div class="molecule-list" id="toolCards"></div><div class="tool-workspace" id="toolWorkspace"><div class="emptymsg">Choose a tool above to open it.</div></div></section><aside class="panel"><h3 id="toolsNoteTitle">How to use the tools</h3><p class="muted" id="toolsNote">Choose a tool card to open its calculator or reference. These tools run locally in your browser.</p></aside></div></div>
 <div id="view-favorites" class="view hidden"><section class="panel"><div class="sectionhead"><div><h2 id="favoritesTitle">Favorites</h2><div class="muted" id="favoritesHint">Your saved elements and substances on this device.</div></div><button class="secondary" id="clearFavorites">Clear favorites</button></div><div id="favoritesList" class="molecule-list"></div></section></div>
@@ -83,6 +83,173 @@ const molecules = [
 {name:{en:'Ozone',ru:'Озон',hy:'Օզոն',es:'Ozono',ca:'Ozó'},formula:'O3',mass:47.997,desc:{en:'A triatomic form of oxygen.',ru:'Трёхатомная форма кислорода.',hy:'Թթվածնի եռատոմ ձև։',es:'Forma triatómica del oxígeno.',ca:'Forma triatòmica de l’oxigen.'}},
 {name:{en:'Ethanol',ru:'Этанол',hy:'Էթանոլ',es:'Etanol',ca:'Etanol'},formula:'C2H6O',mass:46.06844,desc:{en:'An organic compound also known as ethyl alcohol.',ru:'Органическое соединение, также называемое этиловым спиртом.',hy:'Օրգանական միացություն, որը հայտնի է նաև որպես էթիլ սպիրտ։',es:'Compuesto orgánico también llamado alcohol etílico.',ca:'Compost orgànic també anomenat alcohol etílic.'}}
 ];
+const molCats={acid:{en:'Acid',ru:'Кислота',hy:'Թթու',es:'Ácido',ca:'Àcid'},base:{en:'Base',ru:'Основание',hy:'Հիմք',es:'Base',ca:'Base'},salt:{en:'Salt',ru:'Соль',hy:'Աղ',es:'Sal',ca:'Sal'},oxide:{en:'Oxide',ru:'Оксид',hy:'Օքսիդ',es:'Óxido',ca:'Òxid'},organic:{en:'Organic compound',ru:'Органическое вещество',hy:'Օրգանական նյութ',es:'Compuesto orgánico',ca:'Compost orgànic'},simple:{en:'Simple substance',ru:'Простое вещество',hy:'Պարզ նյութ',es:'Sustancia simple',ca:'Substància simple'},other:{en:'Other inorganic',ru:'Прочее неорганическое',hy:'Այլ անօրգանական',es:'Otro inorgánico',ca:'Altre inorgànic'}};
+function catLabel(m){let c=molCats[m.cat];return c?(c[lang]||c.en):''}
+const baseCats={H2O:'oxide',CO2:'oxide',O2:'simple',H2:'simple',NH3:'other',CH4:'organic',NaCl:'salt',H2SO4:'acid',C6H12O6:'organic','Ca(OH)2':'base',HCl:'acid',O3:'simple',C2H6O:'organic'};
+molecules.forEach(m=>{if(!m.cat)m.cat=baseCats[m.formula]});
+/* New substances: category|formula|en|ru|hy|es|ca  (append only, never reorder: favorites store indexes) */
+const MOLDATA=`acid|HNO3|Nitric acid|Азотная кислота|Ազոտական թթու|Ácido nítrico|Àcid nítric
+acid|H3PO4|Phosphoric acid|Фосфорная кислота|Ֆոսֆորական թթու|Ácido fosfórico|Àcid fosfòric
+acid|H2CO3|Carbonic acid|Угольная кислота|Ածխաթթու|Ácido carbónico|Àcid carbònic
+acid|H2SO3|Sulfurous acid|Сернистая кислота|Ծծմբային թթու|Ácido sulfuroso|Àcid sulfurós
+acid|H2S|Hydrogen sulfide|Сероводород|Ծծմբաջրածին|Sulfuro de hidrógeno|Sulfur d’hidrogen
+acid|H3BO3|Boric acid|Борная кислота|Բորական թթու|Ácido bórico|Àcid bòric
+base|NaOH|Sodium hydroxide|Гидроксид натрия|Նատրիումի հիդրօքսիդ|Hidróxido de sodio|Hidròxid de sodi
+base|KOH|Potassium hydroxide|Гидроксид калия|Կալիումի հիդրօքսիդ|Hidróxido de potasio|Hidròxid de potassi
+base|Mg(OH)2|Magnesium hydroxide|Гидроксид магния|Մագնեզիումի հիդրօքսիդ|Hidróxido de magnesio|Hidròxid de magnesi
+base|Al(OH)3|Aluminium hydroxide|Гидроксид алюминия|Ալյումինի հիդրօքսիդ|Hidróxido de aluminio|Hidròxid d’alumini
+base|Fe(OH)3|Iron(III) hydroxide|Гидроксид железа(III)|Երկաթի(III) հիդրօքսիդ|Hidróxido de hierro(III)|Hidròxid de ferro(III)
+base|Cu(OH)2|Copper(II) hydroxide|Гидроксид меди(II)|Պղնձի(II) հիդրօքսիդ|Hidróxido de cobre(II)|Hidròxid de coure(II)
+base|Ba(OH)2|Barium hydroxide|Гидроксид бария|Բարիումի հիդրօքսիդ|Hidróxido de bario|Hidròxid de bari
+oxide|CO|Carbon monoxide|Оксид углерода(II), угарный газ|Ածխածնի(II) օքսիդ|Monóxido de carbono|Monòxid de carboni
+oxide|SO2|Sulfur dioxide|Оксид серы(IV)|Ծծմբի(IV) օքսիդ|Dióxido de azufre|Diòxid de sofre
+oxide|SO3|Sulfur trioxide|Оксид серы(VI)|Ծծմբի(VI) օքսիդ|Trióxido de azufre|Triòxid de sofre
+oxide|NO2|Nitrogen dioxide|Оксид азота(IV)|Ազոտի(IV) օքսիդ|Dióxido de nitrógeno|Diòxid de nitrogen
+oxide|N2O|Nitrous oxide|Оксид азота(I), закись азота|Ազոտի(I) օքսիդ|Óxido nitroso|Òxid nitrós
+oxide|CaO|Calcium oxide|Оксид кальция|Կալցիումի օքսիդ|Óxido de calcio|Òxid de calci
+oxide|MgO|Magnesium oxide|Оксид магния|Մագնեզիումի օքսիդ|Óxido de magnesio|Òxid de magnesi
+oxide|Fe2O3|Iron(III) oxide|Оксид железа(III)|Երկաթի(III) օքսիդ|Óxido de hierro(III)|Òxid de ferro(III)
+oxide|Al2O3|Aluminium oxide|Оксид алюминия|Ալյումինի օքսիդ|Óxido de aluminio|Òxid d’alumini
+oxide|SiO2|Silicon dioxide|Оксид кремния(IV)|Սիլիցիումի(IV) օքսիդ|Dióxido de silicio|Diòxid de silici
+oxide|CuO|Copper(II) oxide|Оксид меди(II)|Պղնձի(II) օքսիդ|Óxido de cobre(II)|Òxid de coure(II)
+oxide|ZnO|Zinc oxide|Оксид цинка|Ցինկի օքսիդ|Óxido de zinc|Òxid de zinc
+oxide|P2O5|Phosphorus(V) oxide|Оксид фосфора(V)|Ֆոսֆորի(V) օքսիդ|Pentóxido de fósforo|Pentòxid de fòsfor
+oxide|H2O2|Hydrogen peroxide|Пероксид водорода|Ջրածնի պերօքսիդ|Peróxido de hidrógeno|Peròxid d’hidrogen
+salt|Na2CO3|Sodium carbonate|Карбонат натрия|Նատրիումի կարբոնատ|Carbonato de sodio|Carbonat de sodi
+salt|NaHCO3|Sodium hydrogencarbonate|Гидрокарбонат натрия (питьевая сода)|Նատրիումի հիդրոկարբոնատ|Bicarbonato de sodio|Bicarbonat de sodi
+salt|CaCO3|Calcium carbonate|Карбонат кальция|Կալցիումի կարբոնատ|Carbonato de calcio|Carbonat de calci
+salt|KCl|Potassium chloride|Хлорид калия|Կալիումի քլորիդ|Cloruro de potasio|Clorur de potassi
+salt|CaCl2|Calcium chloride|Хлорид кальция|Կալցիումի քլորիդ|Cloruro de calcio|Clorur de calci
+salt|MgCl2|Magnesium chloride|Хлорид магния|Մագնեզիումի քլորիդ|Cloruro de magnesio|Clorur de magnesi
+salt|FeCl3|Iron(III) chloride|Хлорид железа(III)|Երկաթի(III) քլորիդ|Cloruro de hierro(III)|Clorur de ferro(III)
+salt|AgCl|Silver chloride|Хлорид серебра|Արծաթի քլորիդ|Cloruro de plata|Clorur de plata
+salt|AgNO3|Silver nitrate|Нитрат серебра|Արծաթի նիտրատ|Nitrato de plata|Nitrat de plata
+salt|KNO3|Potassium nitrate|Нитрат калия|Կալիումի նիտրատ|Nitrato de potasio|Nitrat de potassi
+salt|NH4NO3|Ammonium nitrate|Нитрат аммония|Ամոնիումի նիտրատ|Nitrato de amonio|Nitrat d’amoni
+salt|NH4Cl|Ammonium chloride|Хлорид аммония|Ամոնիումի քլորիդ|Cloruro de amonio|Clorur d’amoni
+salt|CuSO4|Copper(II) sulfate|Сульфат меди(II)|Պղնձի(II) սուլֆատ|Sulfato de cobre(II)|Sulfat de coure(II)
+salt|Na2SO4|Sodium sulfate|Сульфат натрия|Նատրիումի սուլֆատ|Sulfato de sodio|Sulfat de sodi
+salt|BaSO4|Barium sulfate|Сульфат бария|Բարիումի սուլֆատ|Sulfato de bario|Sulfat de bari
+salt|Al2(SO4)3|Aluminium sulfate|Сульфат алюминия|Ալյումինի սուլֆատ|Sulfato de aluminio|Sulfat d’alumini
+salt|Ca3(PO4)2|Calcium phosphate|Фосфат кальция|Կալցիումի ֆոսֆատ|Fosfato de calcio|Fosfat de calci
+salt|KMnO4|Potassium permanganate|Перманганат калия|Կալիումի պերմանգանատ|Permanganato de potasio|Permanganat de potassi
+salt|K2Cr2O7|Potassium dichromate|Дихромат калия|Կալիումի դիքրոմատ|Dicromato de potasio|Dicromat de potassi
+salt|KI|Potassium iodide|Иодид калия|Կալիումի յոդիդ|Yoduro de potasio|Iodur de potassi
+organic|C2H6|Ethane|Этан|Էթան|Etano|Età
+organic|C3H8|Propane|Пропан|Պրոպան|Propano|Propà
+organic|C4H10|Butane|Бутан|Բութան|Butano|Butà
+organic|C2H4|Ethene (ethylene)|Этен (этилен)|Էթեն|Eteno (etileno)|Etè (etilè)
+organic|C2H2|Ethyne (acetylene)|Этин (ацетилен)|Ացետիլեն|Etino (acetileno)|Etí (acetilè)
+organic|C6H6|Benzene|Бензол|Բենզոլ|Benceno|Benzè
+organic|C7H8|Toluene|Толуол|Տոլուոլ|Tolueno|Toluè
+organic|CH3OH|Methanol|Метанол|Մեթանոլ|Metanol|Metanol
+organic|C3H8O3|Glycerol|Глицерин|Գլիցերին|Glicerol|Glicerol
+organic|CH2O|Formaldehyde|Формальдегид|Ֆորմալդեհիդ|Formaldehído|Formaldehid
+organic|C3H6O|Acetone|Ацетон|Ացետոն|Acetona|Acetona
+organic|CH3COOH|Acetic acid|Уксусная кислота|Քացախաթթու|Ácido acético|Àcid acètic
+organic|HCOOH|Formic acid|Муравьиная кислота|Մրջնաթթու|Ácido fórmico|Àcid fòrmic
+organic|C12H22O11|Sucrose|Сахароза|Սախարոզ|Sacarosa|Sacarosa
+organic|CO(NH2)2|Urea|Мочевина|Միզանյութ|Urea|Urea
+simple|N2|Nitrogen|Азот|Ազոտ|Nitrógeno|Nitrogen
+simple|Cl2|Chlorine|Хлор|Քլոր|Cloro|Clor
+simple|F2|Fluorine|Фтор|Ֆտոր|Flúor|Fluor
+simple|I2|Iodine|Иод|Յոդ|Yodo|Iode
+simple|S8|Sulfur (S8)|Сера (S8)|Ծծումբ (S8)|Azufre (S8)|Sofre (S8)`;
+MOLDATA.trim().split('\n').forEach(l=>{let [cat,formula,en,ru,hy,es,ca]=l.split('|');molecules.push({cat,formula,name:{en,ru,hy,es,ca},desc:molCats[cat]})});
+/* Batch 2: generated oxides/peroxides/hydroxides/salts + manual acids, hydrides, organics */
+const MOLDATA2=`acid|HF|Hydrofluoric acid|Плавиковая кислота|Ֆտորաջրածնական թթու|Ácido fluorhídrico|Àcid fluorhídric
+acid|HBr|Hydrobromic acid|Бромоводородная кислота|Բրոմաջրածնական թթու|Ácido bromhídrico|Àcid bromhídric
+acid|HI|Hydroiodic acid|Иодоводородная кислота|Յոդաջրածնական թթու|Ácido yodhídrico|Àcid iodhídric
+acid|HCN|Hydrocyanic acid|Циановодородная кислота|Ցիանաջրածնական թթու|Ácido cianhídrico|Àcid cianhídric
+acid|H2Se|Hydrogen selenide|Селеноводород|Սելենաջրածին|Seleniuro de hidrógeno|Seleniür d’hidrogen
+acid|HNO2|Nitrous acid|Азотистая кислота|Ազոտային թթու|Ácido nitroso|Àcid nitrós
+acid|HClO|Hypochlorous acid|Хлорноватистая кислота|Հիպոքլորային թթու|Ácido hipocloroso|Àcid hipoclorós
+acid|HClO2|Chlorous acid|Хлористая кислота|Քլորային թթու|Ácido cloroso|Àcid clorós
+acid|HClO3|Chloric acid|Хлорноватая кислота|Քլորական թթու|Ácido clórico|Àcid clòric
+acid|HClO4|Perchloric acid|Хлорная кислота|Գերքլորական թթու|Ácido perclórico|Àcid perclòric
+acid|H2SiO3|Silicic acid|Кремниевая кислота|Սիլիցիումական թթու|Ácido silícico|Àcid silícic
+acid|H2CrO4|Chromic acid|Хромовая кислота|Քրոմական թթու|Ácido crómico|Àcid cròmic
+acid|H2Cr2O7|Dichromic acid|Дихромовая кислота|Երկքրոմական թթու|Ácido dicrómico|Àcid dicròmic
+acid|HMnO4|Permanganic acid|Марганцевая кислота|Մանգանական թթու|Ácido permangánico|Àcid permangànic
+acid|H3PO3|Phosphorous acid|Фосфористая кислота|Ֆոսֆորային թթու|Ácido fosforoso|Àcid fosforós
+acid|HPO3|Metaphosphoric acid|Метафосфорная кислота|Մետաֆոսֆորական թթու|Ácido metafosfórico|Àcid metafosfòric
+acid|H2S2O3|Thiosulfuric acid|Тиосерная кислота|Թիոծծմբական թթու|Ácido tiosulfúrico|Àcid tiosulfúric
+other|PH3|Phosphine|Фосфин|Ֆոսֆին|Fosfina|Fosfina
+other|SiH4|Silane|Силан|Սիլան|Silano|Silà
+other|N2H4|Hydrazine|Гидразин|Հիդրազին|Hidracina|Hidrazina
+other|LiH|Lithium hydride|Гидрид лития|Լիթիումի հիդրիդ|Hidruro de litio|Hidrur de liti
+other|NaH|Sodium hydride|Гидрид натрия|Նատրիումի հիդրիդ|Hidruro de sodio|Hidrur de sodi
+other|CaH2|Calcium hydride|Гидрид кальция|Կալցիումի հիդրիդ|Hidruro de calcio|Hidrur de calci
+oxide|Fe3O4|Iron(II,III) oxide|Оксид железа(II,III)|Երկաթի(II,III) օքսիդ|Óxido de hierro(II,III)|Òxid de ferro(II,III)
+oxide|KO2|Potassium superoxide|Надпероксид калия|Կալիումի սուպերօքսիդ|Superóxido de potasio|Superòxid de potassi
+salt|NaClO|Sodium hypochlorite|Гипохлорит натрия|Նատրիումի հիպոքլորիտ|Hipoclorito de sodio|Hipoclorit de sodi
+salt|KClO3|Potassium chlorate|Хлорат калия|Կալիումի քլորատ|Clorato de potasio|Clorat de potassi
+salt|NaNO2|Sodium nitrite|Нитрит натрия|Նատրիումի նիտրիտ|Nitrito de sodio|Nitrit de sodi
+salt|Na2SiO3|Sodium silicate|Силикат натрия|Նատրիումի սիլիկատ|Silicato de sodio|Silicat de sodi
+salt|Na2S2O3|Sodium thiosulfate|Тиосульфат натрия|Նատրիումի թիոսուլֆատ|Tiosulfato de sodio|Tiosulfat de sodi
+salt|CaC2|Calcium carbide|Карбид кальция|Կալցիումի կարբիդ|Carburo de calcio|Carbur de calci
+organic|C3H6|Propene|Пропен|Պրոպեն|Propeno|Propè
+organic|C5H12|Pentane|Пентан|Պենտան|Pentano|Pentà
+organic|C6H14|Hexane|Гексан|Հեքսան|Hexano|Hexà
+organic|C8H18|Octane|Октан|Օկտան|Octano|Octà
+organic|C6H5OH|Phenol|Фенол|Ֆենոլ|Fenol|Fenol
+organic|C6H5NH2|Aniline|Анилин|Անիլին|Anilina|Anilina
+organic|CH3NH2|Methylamine|Метиламин|Մեթիլամին|Metilamina|Metilamina
+organic|CH3CHO|Acetaldehyde|Ацетальдегид|Ացետալդեհիդ|Acetaldehído|Acetaldehid
+organic|C17H35COOH|Stearic acid|Стеариновая кислота|Ստեարինաթթու|Ácido esteárico|Àcid esteàric
+organic|NH2CH2COOH|Glycine|Глицин|Գլիցին|Glicina|Glicina
+simple|Br2|Bromine|Бром|Բրոմ|Bromo|Brom`;
+const CATS=`Li|Lithium|лития|Լիթիումի|litio|liti|1
+Na|Sodium|натрия|Նատրիումի|sodio|sodi|1
+K|Potassium|калия|Կալիումի|potasio|potassi|1
+NH4|Ammonium|аммония|Ամոնիումի|amonio|amoni|1
+Mg|Magnesium|магния|Մագնեզիումի|magnesio|magnesi|2
+Ca|Calcium|кальция|Կալցիումի|calcio|calci|2
+Sr|Strontium|стронция|Ստրոնցիումի|estroncio|estronci|2
+Ba|Barium|бария|Բարիումի|bario|bari|2
+Al|Aluminium|алюминия|Ալյումինի|aluminio|alumini|3
+Zn|Zinc|цинка|Ցինկի|zinc|zinc|2
+Fe|Iron|железа|Երկաթի|hierro|ferro|2,3
+Cu|Copper|меди|Պղնձի|cobre|coure|1,2
+Ag|Silver|серебра|Արծաթի|plata|plata|1
+Pb|Lead|свинца|Կապարի|plomo|plom|2;4
+Hg|Mercury|ртути|Սնդիկի|mercurio|mercuri|2!
+Mn|Manganese|марганца|Մանգանի|manganeso|manganès|2;4,7
+Cr|Chromium|хрома|Քրոմի|cromo|crom|3;6
+Ni|Nickel|никеля|Նիկելի|níquel|níquel|2
+Co|Cobalt|кобальта|Կոբալտի|cobalto|cobalt|2
+Sn|Tin|олова|Անագի|estaño|estany|2;4`;
+const ANS=`O|2|0|oxide|oxide|оксид|օքսիդ|óxido|òxid|NH4|
+OH|1|1|base|hydroxide|гидроксид|հիդրօքսիդ|hidróxido|hidròxid|Ag,Hg,Cu1|
+O2|2|0|oxide|peroxide|пероксид|պերօքսիդ|peróxido|peròxid||Li,Na,K,Mg,Ca,Ba,Sr,Zn
+Cl|1|0|salt|chloride|хлорид|քլորիդ|cloruro|clorur||
+Br|1|0|salt|bromide|бромид|բրոմիդ|bromuro|bromur|Fe3,Cu2|
+I|1|0|salt|iodide|иодид|յոդիդ|yoduro|iodur|Fe3,Cu2|
+F|1|0|salt|fluoride|фторид|ֆտորիդ|fluoruro|fluorur|Cu1|
+S|2|0|salt|sulfide|сульфид|սուլֆիդ|sulfuro|sulfur|Al,Cr,Fe3|
+SO4|2|1|salt|sulfate|сульфат|սուլֆատ|sulfato|sulfat|Cu1|
+SO3|2|1|salt|sulfite|сульфит|սուլֆիտ|sulfito|sulfit||Li,Na,K,NH4,Mg,Ca,Ba,Zn
+NO3|1|1|salt|nitrate|нитрат|նիտրատ|nitrato|nitrat|Cu1,Sn|
+CO3|2|1|salt|carbonate|карбонат|կարբոնատ|carbonato|carbonat|Al,Fe3,Cr,Hg,Sn,Cu1|
+PO4|3|1|salt|phosphate|фосфат|ֆոսֆատ|fosfato|fosfat|Cu1|`;
+const NMS=`N|Nitrogen|азота|Ազոտի|nitrógeno|nitrogen|1,2,3,4,5
+P|Phosphorus|фосфора|Ֆոսֆորի|fósforo|fòsfor|3,5
+Cl|Chlorine|хлора|Քլորի|cloro|clor|1,7
+B|Boron|бора|Բորի|boro|bor|3`;
+(function(){
+const have=new Set(molecules.map(m=>m.formula)),R=['','I','II','III','IV','V','VI','VII'],gcd=(a,b)=>b?gcd(b,a%b):a,cap=s=>s[0].toUpperCase()+s.slice(1),vow=/^[aeiouàèéíòóú]/i;
+const add=(cat,formula,en,ru,hy,es,ca)=>{if(have.has(formula))return;have.add(formula);molecules.push({cat,formula,name:{en,ru,hy,es,ca},desc:molCats[cat]})};
+const pt=(s,n,p)=>n===1?s:(p?'('+s+')'+n:s+n);
+const combo=(C,A,st,rom)=>{let [sym,cen,cru,chy,ces,cca]=C,[af,ach,ap,cat,aen,aru,ahy,aes,aca]=A;let g=gcd(st,+ach),nc=+ach/g,na=st/g,r=rom?'('+R[st]+')':'';add(cat,pt(sym,nc,sym==='NH4')+pt(af,na,+ap),cen+r+' '+aen,cap(aru)+' '+cru+r,chy+r+' '+ahy,cap(aes)+' de '+ces+r,cap(aca)+' '+(vow.test(cca)?'d’':'de ')+cca+r)};
+const rows=t=>t.trim().split('\n').map(l=>l.split('|'));
+const ANR=rows(ANS);
+rows(CATS).forEach(C=>{let [mainS,extraS]=C[6].replace('!','').split(';'),main=mainS.split(',').map(Number),extra=extraS?extraS.split(',').map(Number):[],rom=C[6].includes('!')||main.length+extra.length>1;
+ANR.forEach(A=>{let ex=(A[9]||'').split(','),only=A[10]?A[10].split(','):null;if(only&&!only.includes(C[0]))return;let states=A[0]==='O'?main.concat(extra):main;states.forEach(st=>{if(ex.includes(C[0])||ex.includes(C[0]+st))return;combo(C,A.slice(0,9),st,rom)})})});
+rows(NMS).forEach(C=>{let st=C[6].split(',').map(Number);st.forEach(s=>combo(C,ANR[0],s,st.length>1))});
+rows(MOLDATA2).forEach(([cat,formula,en,ru,hy,es,ca])=>add(cat,formula,en,ru,hy,es,ca));
+})();
+function fillMasses(){molecules.forEach(m=>{if(m.mass==null)m.mass=formulaMass(m.formula).mass})}
+function populateMolCats(){let s=$('moleculeCat'),v=s.value;s.innerHTML=`<option value="">${tr('allCategories')}</option>`+Object.keys(molCats).map(k=>`<option value="${k}">${molCats[k][lang]||molCats[k].en}</option>`).join('');s.value=v}
 const translations={
 en:{eyebrow:'YOUR CHEMISTRY WORKSPACE',heroTitle:'Chemistry, made clearer.',heroDesc:'Find an element, understand a molecule, and solve chemistry calculations — all in one place.',badgeText:'118 elements · multilingual search',table:'Periodic table',molecules:'Molecules',calculator:'Molar mass calculator',tools:'Chemistry tools',favorites:'★ Favorites',periodicTitle:'Periodic table',tableHint:'Select any element to open its detailed card.',quickTitle:'Quick tools',elements:'elements',moleculesSmall:'molecules',languages:'languages',quickDesc:'Search by name, symbol, atomic number or formula.',quickCalc:'Calculate molar mass →',recentTitle:'Recent searches',clearHistory:'Clear history',savedTitle:'Saved locally',savedDesc:'Favorites and language preference stay in this browser. No account needed.',moleculeTitle:'Molecules & compounds',moleculeHint:'A starter set of common school chemistry substances.',calcTitle:'Molar mass calculator',calcDesc:'Enter a chemical formula. Parentheses and subscripts are supported, e.g. Ca(OH)2, Al2(SO4)3, C6H12O6.',formulaLabel:'Chemical formula',calculate:'Calculate',example:'Try example',clear:'Clear',formulaHelpTitle:'How to enter formulas',toolsTitle:'Chemistry tools',toolsNoteTitle:'Next modules',toolsNote:'This starter build includes the periodic table, multilingual search, molecule cards and molar mass calculator. Advanced equation balancing, oxidation-state solving and the 3D molecule builder can be added next.',favoritesTitle:'Favorites',favoritesHint:'Your saved elements and substances on this device.',clearFavorites:'Clear favorites',footer:'Built for learning. Verify critical scientific values with trusted references.',allCategories:'All categories',filterMolecules:'Filter molecules…',recentEmpty:'No recent searches yet.',noFavorites:'No favorites saved yet.',noResults:'No results found. Try another name, symbol or formula.',details:'Element details',atomicNumber:'Atomic number',atomicMass:'Relative atomic mass',group:'Group',period:'Period',category:'Category',state:'State at room temperature',gas:'Gas',solid:'Solid',liquid:'Liquid',unknown:'Unknown / predicted',protons:'Protons',electrons:'Electrons (neutral atom)',neutrons:'Neutrons',electronConfig:'Electron configuration',favorite:'☆ Add to favorites',unfavorite:'★ Remove from favorites',molarMass:'Molar mass',formula:'Formula',description:'Description',atoms:'Atoms counted',contribution:'Mass contribution',step1:'Read the formula and count each element.',step2:'Multiply each element’s atomic mass by its atom count.',step3:'Add the contributions to get the molar mass.',invalid:'Could not read this formula. Check element symbols and subscripts.',massResult:'Calculated molar mass',toolsList:['Balance chemical equations','Amount of substance calculator','Oxidation state helper','Solubility table','Metal activity series','Molecule constructor','Reaction reference','Study mode'],toolsDescriptions:['Balance equations with integer coefficients.','Convert between mass, moles and particles.','Work through oxidation-state rules.','Look up common solubility patterns.','Compare metal reactivity.','Build molecule structures from atoms.','Explore common reaction types.','Practice and check chemistry knowledge.'],searchPlaceholder:'Search elements, molecules or formulas…',historyCleared:'History cleared.',favoritesCleared:'Favorites cleared.',saveFirst:'Select a result to add it to favorites.',detailBack:'Back to table',searchResults:'Search results',molecule:'Molecule / compound',element:'Element'},
 ru:{eyebrow:'ТВОЯ ХИМИЧЕСКАЯ ЛАБОРАТОРИЯ',heroTitle:'Химия становится понятнее.',heroDesc:'Находи элементы, изучай молекулы и решай химические задачи в одном месте.',badgeText:'118 элементов · поиск на 5 языках',table:'Таблица Менделеева',molecules:'Молекулы',calculator:'Калькулятор молярной массы',tools:'Инструменты',favorites:'★ Избранное',periodicTitle:'Периодическая таблица',tableHint:'Нажми на элемент, чтобы открыть подробную карточку.',quickTitle:'Быстрые инструменты',elements:'элементов',moleculesSmall:'молекул',languages:'языков',quickDesc:'Поиск по названию, символу, номеру или формуле.',quickCalc:'Рассчитать молярную массу →',recentTitle:'Недавние запросы',clearHistory:'Очистить историю',savedTitle:'Локальное сохранение',savedDesc:'Избранное и язык сохраняются в этом браузере. Аккаунт не нужен.',moleculeTitle:'Молекулы и соединения',moleculeHint:'Начальная подборка распространённых школьных веществ.',calcTitle:'Калькулятор молярной массы',calcDesc:'Введи формулу. Поддерживаются скобки и индексы: Ca(OH)2, Al2(SO4)3, C6H12O6.',formulaLabel:'Химическая формула',calculate:'Рассчитать',example:'Пример',clear:'Очистить',formulaHelpTitle:'Как вводить формулы',toolsTitle:'Химические инструменты',toolsNoteTitle:'Следующие модули',toolsNote:'В этой версии работают таблица, многоязычный поиск, карточки молекул и калькулятор. Балансировщик реакций, степени окисления и 3D-конструктор можно добавить следующим этапом.',favoritesTitle:'Избранное',favoritesHint:'Сохранённые элементы и вещества на этом устройстве.',clearFavorites:'Очистить избранное',footer:'Создано для обучения. Важные научные данные проверяй по надёжным источникам.',allCategories:'Все категории',filterMolecules:'Фильтр молекул…',recentEmpty:'Пока нет недавних запросов.',noFavorites:'Избранных записей пока нет.',noResults:'Ничего не найдено. Попробуй другое название, символ или формулу.',details:'Сведения об элементе',atomicNumber:'Атомный номер',atomicMass:'Относительная атомная масса',group:'Группа',period:'Период',category:'Категория',state:'Состояние при комнатной температуре',gas:'Газ',solid:'Твёрдое',liquid:'Жидкость',unknown:'Неизвестно / предсказано',protons:'Протоны',electrons:'Электроны (нейтральный атом)',neutrons:'Нейтроны',electronConfig:'Электронная конфигурация',favorite:'☆ В избранное',unfavorite:'★ Убрать из избранного',molarMass:'Молярная масса',formula:'Формула',description:'Описание',atoms:'Количество атомов',contribution:'Вклад в массу',step1:'Разбери формулу и посчитай атомы каждого элемента.',step2:'Умножь атомную массу каждого элемента на число его атомов.',step3:'Сложи результаты, чтобы получить молярную массу.',invalid:'Не удалось разобрать формулу. Проверь символы элементов и индексы.',massResult:'Рассчитанная молярная масса',toolsList:['Балансировка уравнений','Калькулятор количества вещества','Помощник по степеням окисления','Таблица растворимости','Ряд активности металлов','Конструктор молекул','Справочник реакций','Режим подготовки'],toolsDescriptions:['Подбор целочисленных коэффициентов.','Перевод массы, молей и числа частиц.','Разбор правил определения степени окисления.','Поиск распространённых закономерностей растворимости.','Сравнение активности металлов.','Создание структуры из атомов.','Изучение распространённых типов реакций.','Практика и проверка знаний по химии.'],searchPlaceholder:'Поиск элементов, молекул и формул…',historyCleared:'История очищена.',favoritesCleared:'Избранное очищено.',saveFirst:'Выбери результат, чтобы добавить его в избранное.',detailBack:'Назад к таблице',searchResults:'Результаты поиска',molecule:'Молекула / соединение',element:'Элемент'},
@@ -119,11 +286,14 @@ function updateFavCount(){let e=$('favCount');if(e)e.textContent=favorites.lengt
 function renderDetailFavorite(){let btn=$('detailFav');if(!btn||!currentItem)return;let key=currentItem.type+':'+currentItem.id;btn.textContent=favorites.some(f=>f.key===key)?tr('unfavorite'):tr('favorite')}
 function showElement(z){let e=elementsRaw.find(x=>x[0]===z);if(!e)return;currentItem={type:'element',id:z,label:elName(e)};addRecent('element',z,elName(e));showDetail();showView('table');$('detailView').classList.remove('hidden');$('detailView').scrollIntoView({behavior:'smooth',block:'start'})}
 function showMolecule(i){let m=molecules[i];currentItem={type:'molecule',id:i,label:molName(m)};addRecent('molecule',i,molName(m));showDetail();$('detailView').classList.remove('hidden');$('detailView').scrollIntoView({behavior:'smooth',block:'start'})}
-function showDetail(){let item=currentItem;if(!item)return;let d=$('detailView');if(item.type==='element'){let e=elementsRaw.find(x=>x[0]===item.id);let cat=catName(e[4]),state=tr(elementState(e));let isotopeMass=Math.round(e[3]);d.innerHTML=`<div class="sectionhead"><div class="eyebrow">${tr('details')}</div><button class="secondary" id="closeDetail">✕</button></div><div class="detailhead"><div class="detail-symbol">${e[1]}</div><div><h2>${elName(e)}</h2><p>${e[2]} · ${cat}</p><div class="formula">${e[3]}</div></div></div><div class="data-grid">${dataCell(tr('atomicNumber'),e[0])}${dataCell(tr('atomicMass'),e[3]+' u')}${dataCell(tr('group'),e[5])}${dataCell(tr('period'),e[6])}${dataCell(tr('category'),cat)}${dataCell(tr('state'),state)}${dataCell(tr('protons'),e[0])}${dataCell(tr('electrons'),e[0])}${dataCell(tr('neutrons'),`≈ ${Math.max(0,isotopeMass-e[0])}*`)}<div class="data" style="grid-column:1/-1"><small>${tr('electronConfig')}</small><strong>${e[7]}</strong></div></div><p class="status">${lang==='ru'?'* Приблизительная оценка по округлённой атомной массе; точное число нейтронов зависит от изотопа.':lang==='hy'?'* Մոտավոր գնահատական՝ կլորացված զանգվածով․ նեյտրոնների ճշգրիտ թիվը կախված է իզոտոպից։':lang==='es'?'* Estimación aproximada; el número exacto de neutrones depende del isótopo.':lang==='ca'?'* Estimació aproximada; el nombre exacte de neutrons depèn de l’isòtop.':'* Approximate estimate from rounded atomic mass; exact neutron count depends on the isotope.'}</p><button class="primary" id="detailFav">${tr('favorite')}</button>`;
-}else{let m=molecules[item.id];let counts=parseFormula(m.formula);d.innerHTML=`<div class="sectionhead"><div class="eyebrow">${tr('molecule')}</div><button class="secondary" id="closeDetail">✕</button></div><div class="detailhead"><div class="detail-symbol">⚛</div><div><h2>${molName(m)}</h2><p>${m.formula}</p><div class="formula">${m.mass.toFixed(3)} g/mol</div></div></div><div class="data-grid">${dataCell(tr('formula'),m.formula)}${dataCell(tr('molarMass'),m.mass.toFixed(5)+' g/mol')}${dataCell(tr('atoms'),Object.values(counts).reduce((a,b)=>a+b,0))}<div class="data" style="grid-column:1/-1"><small>${tr('description')}</small><strong>${m.desc[lang]||m.desc.en}</strong></div></div><button class="primary" id="detailFav">${tr('favorite')}</button>`}
+const SIMPLE_IDX={H:2,N:2,O:2,F:2,Cl:2,Br:2,I:2,P:4,S:8};
+const IDX_LABEL={en:'Index in simple substance formula',ru:'Индекс в формуле простого вещества',hy:'Ինդեքս պարզ նյութի բանաձևում',es:'Subíndice en la fórmula de la sustancia simple',ca:'Subíndex a la fórmula de la substància simple'};
+function indexCell(sym){let n=SIMPLE_IDX[sym]||1;return dataCell(IDX_LABEL[lang]||IDX_LABEL.en,`<b>${n}</b> &nbsp;(${sym}${n>1?'<sub>'+n+'</sub>':''})`)}
+function showDetail(){let item=currentItem;if(!item)return;let d=$('detailView');if(item.type==='element'){let e=elementsRaw.find(x=>x[0]===item.id);let cat=catName(e[4]),state=tr(elementState(e));let isotopeMass=Math.round(e[3]);d.innerHTML=`<div class="sectionhead"><div class="eyebrow">${tr('details')}</div><button class="secondary" id="closeDetail">✕</button></div><div class="detailhead"><div class="detail-symbol">${e[1]}</div><div><h2>${elName(e)}</h2><p>${e[2]} · ${cat}</p><div class="formula">${e[3]}</div></div></div><div class="data-grid">${dataCell(tr('atomicNumber'),e[0])}${dataCell(tr('atomicMass'),e[3]+' u')}${dataCell(tr('group'),e[5])}${dataCell(tr('period'),e[6])}${dataCell(tr('category'),cat)}${dataCell(tr('state'),state)}${indexCell(e[1])}${dataCell(tr('protons'),e[0])}${dataCell(tr('electrons'),e[0])}${dataCell(tr('neutrons'),`≈ ${Math.max(0,isotopeMass-e[0])}*`)}<div class="data" style="grid-column:1/-1"><small>${tr('electronConfig')}</small><strong>${e[7]}</strong></div></div><p class="status">${lang==='ru'?'* Приблизительная оценка по округлённой атомной массе; точное число нейтронов зависит от изотопа.':lang==='hy'?'* Մոտավոր գնահատական՝ կլորացված զանգվածով․ նեյտրոնների ճշգրիտ թիվը կախված է իզոտոպից։':lang==='es'?'* Estimación aproximada; el número exacto de neutrones depende del isótopo.':lang==='ca'?'* Estimació aproximada; el nombre exacte de neutrons depèn de l’isòtop.':'* Approximate estimate from rounded atomic mass; exact neutron count depends on the isotope.'}</p><button class="primary" id="detailFav">${tr('favorite')}</button>`;
+}else{let m=molecules[item.id];let counts=parseFormula(m.formula);d.innerHTML=`<div class="sectionhead"><div class="eyebrow">${tr('molecule')}</div><button class="secondary" id="closeDetail">✕</button></div><div class="detailhead"><div class="detail-symbol">⚛</div><div><h2>${molName(m)}</h2><p>${m.formula}</p><div class="formula">${m.mass.toFixed(3)} g/mol</div></div></div><div class="data-grid">${dataCell(tr('formula'),m.formula)}${m.cat?dataCell(tr('category'),catLabel(m)):''}${dataCell(tr('molarMass'),m.mass.toFixed(5)+' g/mol')}${dataCell(tr('atoms'),Object.values(counts).reduce((a,b)=>a+b,0))}<div class="data" style="grid-column:1/-1"><small>${tr('description')}</small><strong>${m.desc[lang]||m.desc.en}</strong></div></div><button class="primary" id="detailFav">${tr('favorite')}</button>`}
 $('closeDetail').onclick=()=>d.classList.add('hidden');$('detailFav').onclick=()=>toggleFavorite(item.type,item.id,item.label)}
 function dataCell(a,b){return `<div class="data"><small>${a}</small><strong>${b}</strong></div>`}
-function renderMolecules(filter=''){let q=norm(filter);let list=molecules.map((m,i)=>({m,i})).filter(({m})=>!q||norm([m.formula,...Object.values(m.name)].join(' ')).includes(q));$('moleculeList').innerHTML=list.length?list.map(({m,i})=>`<button class="molecule" data-mi="${i}"><span><b>${molName(m)}</b><small>${m.formula}</small></span><strong>${m.mass.toFixed(3)} g/mol →</strong></button>`).join(''):`<div class="emptymsg">${tr('noResults')}</div>`;$('moleculeList').querySelectorAll('[data-mi]').forEach(b=>b.onclick=()=>showMolecule(+b.dataset.mi));$('molCount').textContent=molecules.length+'+'}
+function renderMolecules(filter){fillMasses();if(filter===undefined){populateMolCats();filter=$('moleculeFilter').value}let q=norm(filter),c=$('moleculeCat').value;let list=molecules.map((m,i)=>({m,i})).filter(({m})=>(!c||m.cat===c)&&(!q||norm([m.formula,...Object.values(m.name)].join(' ')).includes(q)));$('moleculeList').innerHTML=list.length?list.map(({m,i})=>`<button class="molecule" data-mi="${i}"><span><b>${molName(m)}</b><small>${m.formula}${m.cat?' · '+catLabel(m):''}</small></span><strong>${m.mass.toFixed(3)} g/mol →</strong></button>`).join(''):`<div class="emptymsg">${tr('noResults')}</div>`;$('moleculeList').querySelectorAll('[data-mi]').forEach(b=>b.onclick=()=>showMolecule(+b.dataset.mi));$('molCount').textContent=molecules.length+'+'}
 let activeTool=0;
 const toolIcons=['⚖️','∑','±','◈','↗','⚛','⇌','✓'];
 function toolText(key){const t={
@@ -160,8 +330,13 @@ function buildMolecule(){let out=$('builderOut');try{let {counts,mass}=formulaMa
 
 function renderRecent(){$('recentList').innerHTML=recent.length?recent.map(r=>`<button class="molecule" data-recent="${r.type}:${r.id}"><span><b>${r.label}</b><small>${r.type==='element'?tr('element'):tr('molecule')}</small></span><span>↗</span></button>`).join(''):`<div class="emptymsg">${tr('recentEmpty')}</div>`;$('recentList').querySelectorAll('[data-recent]').forEach(b=>b.onclick=()=>{let [t,id]=b.dataset.recent.split(':');t==='element'?showElement(+id):showMolecule(+id)})}
 function renderFavorites(){$('favoritesList').innerHTML=favorites.length?favorites.map(f=>`<button class="molecule" data-fav="${f.key}"><span><b>${f.label}</b><small>${f.type==='element'?tr('element'):tr('molecule')}</small></span><span>★</span></button>`).join(''):`<div class="emptymsg">${tr('noFavorites')}</div>`;$('favoritesList').querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{let f=favorites.find(x=>x.key===b.dataset.fav);f.type==='element'?showElement(+f.id):showMolecule(+f.id)})}
-function allSearchItems(){let items=elementsRaw.map(e=>({type:'element',id:e[0],title:elName(e),symbol:e[1],formula:e[1],sub:e[2]+' · '+catName(e[4]),search:[e[0],e[1],e[2],elName(e),...(Object.values(localizedNames).map(x=>x[e[1]]||''))].join(' ')}));molecules.forEach((m,i)=>items.push({type:'molecule',id:i,title:molName(m),symbol:m.formula,formula:m.formula,sub:m.desc[lang]||m.desc.en,search:[m.formula,...Object.values(m.name),m.desc.en].join(' ')}));return items}
-function doSearch(q){let results=$('searchResults');if(!q.trim()){results.classList.add('hidden');return}let nq=norm(q);let list=allSearchItems().filter(x=>norm(x.search).includes(nq)||norm(x.formula).includes(nq)||norm(x.symbol)===nq).sort((a,b)=>(norm(a.title)===nq?-1:0)-(norm(b.title)===nq?-1:0)).slice(0,35);results.classList.remove('hidden');results.innerHTML=`<div class="sectionhead"><h2>${tr('searchResults')} <span class="muted">(${list.length})</span></h2><button class="secondary" id="closeSearch">✕</button></div>`+(list.length?`<div class="molecule-list">${list.map(x=>`<button class="molecule" data-result="${x.type}:${x.id}"><span><b>${x.title} <span class="muted">${x.symbol}</span></b><small>${x.sub}</small></span><span>→</span></button>`).join('')}</div>`:`<div class="emptymsg">${tr('noResults')}</div>`);$('closeSearch').onclick=()=>results.classList.add('hidden');results.querySelectorAll('[data-result]').forEach(b=>b.onclick=()=>{let [t,id]=b.dataset.result.split(':');$('searchInput').value=q;t==='element'?showElement(+id):showMolecule(+id);results.classList.add('hidden')})}
+function allSearchItems(){let items=elementsRaw.map(e=>({type:'element',id:e[0],title:elName(e),names:[e[1],e[2],elName(e),...Object.values(localizedNames).map(x=>x[e[1]]||'')].filter(Boolean),symbol:e[1],formula:e[1],sub:e[2]+' · '+catName(e[4]),search:[e[0],e[1],e[2],elName(e),...(Object.values(localizedNames).map(x=>x[e[1]]||''))].join(' ')}));molecules.forEach((m,i)=>items.push({type:'molecule',id:i,title:molName(m),names:[m.formula,...Object.values(m.name)],symbol:m.formula,formula:m.formula,sub:m.desc[lang]||m.desc.en,search:[m.formula,...Object.values(m.name),m.desc.en].join(' ')}));return items}
+function editDist(a,b,max){if(Math.abs(a.length-b.length)>max)return max+1;let d=[];for(let i=0;i<=a.length;i++)d[i]=[i];for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++){let c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[a.length][b.length]}
+function fuzzyScore(x,nq,thr){let best=thr+1;for(let n of (x.names||[])){let t=norm(n);if(!t)continue;best=Math.min(best,editDist(nq,t,thr));for(let k=-1;k<=1;k++){let L=nq.length+k;if(L>=2&&t.length>L)best=Math.min(best,editDist(nq,t.slice(0,L),thr)+0.5)}}return best}
+function fuzzyFind(nq,exclude){let len=nq.length,thr=len<3?0:len<5?1:len<9?2:3;if(!thr)return[];let ex=new Set(exclude.map(x=>x.type+':'+x.id));return allSearchItems().filter(x=>!ex.has(x.type+':'+x.id)).map(x=>({x,s:fuzzyScore(x,nq,thr)})).filter(o=>o.s<=thr).sort((a,b)=>a.s-b.s).slice(0,8).map(o=>o.x)}
+const DYM={en:'Did you mean:',ru:'Возможно, вы имели в виду:',hy:'Գուցե նկատի ունեիք՝',es:'¿Quizás quisiste decir…?',ca:'Potser volies dir…?'};
+function fuzzyHtml(fz){return fz.length?`<div class="sectionhead" style="margin-top:14px"><h3>${DYM[lang]||DYM.en}</h3></div><div class="molecule-list">${fz.map(x=>`<button class="molecule" data-result="${x.type}:${x.id}"><span><b>${x.title} <span class="muted">${x.symbol}</span></b><small>${x.sub}</small></span><span>→</span></button>`).join('')}</div>`:''}
+function doSearch(q){let results=$('searchResults');if(!q.trim()){results.classList.add('hidden');return}let nq=norm(q);let list=allSearchItems().filter(x=>norm(x.search).includes(nq)||norm(x.formula).includes(nq)||norm(x.symbol)===nq).sort((a,b)=>(norm(a.title)===nq?-1:0)-(norm(b.title)===nq?-1:0)).slice(0,35);let fz=list.length<5?fuzzyFind(nq,list):[];results.classList.remove('hidden');results.innerHTML=`<div class="sectionhead"><h2>${tr('searchResults')} <span class="muted">(${list.length})</span></h2><button class="secondary" id="closeSearch">✕</button></div>`+(list.length?`<div class="molecule-list">${list.map(x=>`<button class="molecule" data-result="${x.type}:${x.id}"><span><b>${x.title} <span class="muted">${x.symbol}</span></b><small>${x.sub}</small></span><span>→</span></button>`).join('')}</div>`:(fz.length?'':`<div class="emptymsg">${tr('noResults')}</div>`))+fuzzyHtml(fz);$('closeSearch').onclick=()=>results.classList.add('hidden');results.querySelectorAll('[data-result]').forEach(b=>b.onclick=()=>{let [t,id]=b.dataset.result.split(':');$('searchInput').value=q;t==='element'?showElement(+id):showMolecule(+id);results.classList.add('hidden')})}
 function parseFormula(formula){let f=formula.replace(/[₀₁₂₃₄₅₆₇₈₉]/g,x=>String('₀₁₂₃₄₅₆₇₈₉'.indexOf(x)));let i=0;function group(){let counts={};while(i<f.length){if(f[i]==='('||f[i]==='['){let close=f[i]==='('?')':']';i++;let inner=group();if(f[i]!==close)throw Error('paren');i++;let n=number();Object.keys(inner).forEach(k=>counts[k]=(counts[k]||0)+inner[k]*n)}else if(f[i]===')'||f[i]===']')break;else{let m=f.slice(i).match(/^([A-Z][a-z]?)/);if(!m)throw Error('symbol');let sym=m[1];if(!elementsRaw.some(e=>e[1]===sym))throw Error('element');i+=sym.length;let n=number();counts[sym]=(counts[sym]||0)+n}}return counts}function number(){let m=f.slice(i).match(/^\d+/);if(!m)return 1;i+=m[0].length;let n=+m[0];if(n<1)throw Error('number');return n}let result=group();if(i!==f.length||!Object.keys(result).length)throw Error('tail');return result}
 function calculateMass(){let formula=$('formulaInput').value.trim();let out=$('calcResult');if(!formula){out.innerHTML='';return}try{let counts=parseFormula(formula);let rows=Object.entries(counts).map(([sym,n])=>{let e=elementsRaw.find(x=>x[1]===sym);return {sym,n,mass:e[3],contrib:e[3]*n,name:elName(e)}});let total=rows.reduce((a,r)=>a+r.contrib,0);out.innerHTML=`<div class="result"><div class="muted">${tr('massResult')}</div><div class="big">${total.toFixed(5)} g/mol</div><div class="formula">${formula.replace(/(\d+)/g,'<sub>$1</sub>')}</div><table class="resulttable"><thead><tr><th>${tr('atoms')}</th><th>${tr('contribution')}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.sym}</b> × ${r.n}<br><small class="muted">${r.name}: ${r.mass} × ${r.n}</small></td><td>${r.contrib.toFixed(5)}</td></tr>`).join('')}<tr><th>Total</th><th>${total.toFixed(5)} g/mol</th></tr></tbody></table><ol class="steps"><li>${tr('step1')}</li><li>${tr('step2')}</li><li>${tr('step3')} <b>${rows.map(r=>`${r.mass} × ${r.n}`).join(' + ')} = ${total.toFixed(5)} g/mol</b></li></ol></div>`;$('calcStatus').textContent='';}catch(e){out.innerHTML=`<div class="result">${tr('invalid')}</div>`;$('calcStatus').textContent=e.message}}
 $('language').onchange=()=>{lang=$('language').value;localStorage.setItem('chemhub-lang',lang);applyLanguage();if(currentItem)showDetail();if($('searchInput').value)doSearch($('searchInput').value);renderTools()};
@@ -169,7 +344,7 @@ $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';setTheme()};
 $('homeLogo').onclick=e=>{e.preventDefault();showView('table');$('searchInput').value='';$('detailView').classList.add('hidden');window.scrollTo({top:0,behavior:'smooth'})};
 $('nav').querySelectorAll('button[data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>showView(b.dataset.goto));
-$('categoryFilter').onchange=renderTable;$('moleculeFilter').oninput=e=>renderMolecules(e.target.value);
+$('categoryFilter').onchange=renderTable;$('moleculeFilter').oninput=e=>renderMolecules(e.target.value);$('moleculeCat').onchange=()=>renderMolecules();
 $('searchInput').addEventListener('input',e=>doSearch(e.target.value));$('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'){let first=$('searchResults').querySelector('[data-result]');if(first)first.click()}if(e.key==='Escape'){$('searchInput').value='';doSearch('')}});
 $('calculateBtn').onclick=calculateMass;$('formulaInput').addEventListener('keydown',e=>{if(e.key==='Enter')calculateMass()});$('exampleBtn').onclick=()=>{$('formulaInput').value='Ca(OH)2';calculateMass()};$('clearCalc').onclick=()=>{$('formulaInput').value='';$('calcResult').innerHTML='';$('calcStatus').textContent=''};
 $('clearRecent').onclick=()=>{recent=[];localStorage.setItem('chemhub-recent','[]');renderRecent()};$('clearFavorites').onclick=()=>{favorites=[];localStorage.setItem('chemhub-favs','[]');updateFavCount();renderFavorites()};
